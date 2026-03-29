@@ -9,11 +9,11 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <antlr4.version>4.13.2</antlr4.version>
         <st4.version>4.3.4</st4.version>
+        <junit.jupiter.version>5.12.2</junit.jupiter.version>
     </properties>
 
     <dependencies>
@@ -36,35 +36,51 @@
             <version>1.18.42</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
         <plugins>
-
-<!--            <plugin>-->
-<!--                <groupId>org.antlr</groupId>-->
-<!--                <artifactId>antlr4-maven-plugin</artifactId>-->
-<!--                <version>${antlr4.version}</version>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <goals>-->
-<!--                            <goal>antlr4</goal>-->
-<!--                        </goals>-->
-<!--&lt;!&ndash;                        <configuration>&ndash;&gt;-->
-<!--&lt;!&ndash;                            <visitor>true</visitor>&ndash;&gt;-->
-<!--&lt;!&ndash;                            <listener>false</listener>&ndash;&gt;-->
-<!--&lt;!&ndash;                        </configuration>&ndash;&gt;-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
+            <plugin>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-maven-plugin</artifactId>
+                <version>${antlr4.version}</version>
+                <configuration>
+                    <sourceDirectory>${project.basedir}/src/main/java/pwr/miasi/antlr4</sourceDirectory>
+                    <includes>
+                        <include>Sql.g4</include>
+                    </includes>
+                    <visitor>true</visitor>
+                    <listener>false</listener>
+                    <outputDirectory>${project.build.directory}/generated-sources/antlr4</outputDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>antlr4</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
+                    <release>${maven.compiler.release}</release>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
             </plugin>
 
         </plugins>
