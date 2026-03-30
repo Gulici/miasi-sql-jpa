@@ -1,0 +1,64 @@
+group entity;
+
+entity(packageName, imports, className, tableName, idField, scalarFields, relationFields) ::= <<
+<if(packageName)>package <packageName>;
+
+<endif><imports:{imp | import <imp>;
+}>
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "<tableName>")
+public class <className> {
+<if(idField)>
+    @Id
+    @Column(name = "<idField.columnName>", nullable = <idField.nullable>, unique = <idField.unique>)
+    private <idField.type> <idField.name>;
+
+<endif><scalarFields:{f |
+    @Column(name = "<f.columnName>", nullable = <f.nullable>, unique = <f.unique><if(f.length)>, length = <f.length><endif>)
+    private <f.type> <f.name>;
+
+}>
+<relationFields:{r | <relation(relation=r)>}>
+}
+>>
+
+relation(relation) ::= <<
+<if(relation.manyToOne)>
+    @ManyToOne
+    @JoinColumn(name = "<relation.joinColumn>")
+    private <relation.targetEntity> <relation.fieldName>;
+
+<endif><if(relation.oneToOne)>
+<if(relation.owning)>
+    @OneToOne
+    @JoinColumn(name = "<relation.joinColumn>")
+    private <relation.targetEntity> <relation.fieldName>;
+
+<else>
+    @OneToOne(mappedBy = "<relation.mappedBy>")
+    private <relation.targetEntity> <relation.fieldName>;
+
+<endif>
+<endif><if(relation.oneToMany)>
+    @OneToMany(mappedBy = "<relation.mappedBy>")
+    private List <relation.fieldName> = new ArrayList();
+
+<endif><if(relation.manyToMany)>
+<if(relation.owning)>
+    @ManyToMany
+    @JoinTable(
+            name = "<relation.joinTableName>",
+            joinColumns = @JoinColumn(name = "<relation.joinColumn>"),
+            inverseJoinColumns = @JoinColumn(name = "<relation.inverseJoinColumn>")
+    )
+    private Set <relation.fieldName> = new LinkedHashSet();
+
+<else>
+    @ManyToMany(mappedBy = "<relation.mappedBy>")
+    private Set <relation.fieldName> = new LinkedHashSet();
+
+<endif>
+<endif>
+>>

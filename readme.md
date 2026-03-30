@@ -1,89 +1,117 @@
-# SQL → JPA Entity Generator
+# SQL -> JPA Entity Generator
 
-## Cel
-Konwersja schematu bazy danych (SQL DDL) na encje Java zgodne z JPA (Hibernate).
+## Cel projektu
 
-**Proces:** `SQL (DDL) → Java Entities (@Entity)`
+Projekt konwertuje definicje schematu bazy danych zapisane w SQL DDL na klasy encji Java zgodne z JPA/Hibernate.
+Zakres obecnej wersji odpowiada MVP przygotowanemu na potrzeby projektu semestralnego.
 
----
+## Jak dziala aplikacja
 
-## Zakres
+Przeplyw przetwarzania:
 
-**Obsługiwane elementy SQL:**
-- `CREATE TABLE`, `PRIMARY KEY`, `FOREIGN KEY`
-- `UNIQUE`, `NOT NULL`
-- Typy: `INT`, `BIGINT`, `VARCHAR`, `TEXT`, `TIMESTAMP`
+`SQL -> ANTLR Parser -> Parse Tree -> Visitor -> Schema Model -> Relationship Analyzer -> Entity Model -> StringTemplate -> Java`
 
-**Generowany kod Java:**
-- `@Entity`, `@Table`, `@Id`, `@GeneratedValue`, `@Column`
-- Relacje: `@ManyToOne`, `@OneToMany`, `@OneToOne`, `@ManyToMany`
+Opis krokow:
 
----
+1. `Main` wczytuje argumenty CLI i zawartosc pliku SQL.
+2. ANTLR parsuje SQL na podstawie gramatyki `Sql.g4`.
+3. `SchemaVisitor` buduje model schematu (tabele, kolumny, PK, FK).
+4. `RelationshipAnalyzer` wykrywa relacje encji na podstawie kluczy obcych.
+5. `EntityGenerator` oraz szablon `entity.stg` generuja finalne klasy `.java`.
 
-## Pipeline
+## Zakres funkcjonalny (MVP)
 
-SQL   
-↓  
-ANTLR Parser  
-↓  
-Parse Tree  
-↓  
-Visitor  
-↓  
-Schema Model  
-↓  
-Relationship Analyzer  
-↓  
-Entity Model  
-↓  
-Code Generator (StringTemplate)  
-↓  
-Java Code  
+### Obslugiwane elementy DDL
 
+- `CREATE TABLE`
+- `PRIMARY KEY` (inline oraz table-level)
+- `FOREIGN KEY ... REFERENCES ...` (inline oraz table-level)
+- `UNIQUE`
+- `NOT NULL`
+- opcjonalne nazwy ograniczen `CONSTRAINT <name>`
 
----
+### Mapowanie typow SQL -> Java
 
-## Komponenty
+| SQL | Java |
+|---|---|
+| `INT` | `Integer` |
+| `BIGINT` | `Long` |
+| `VARCHAR(n)` | `String` |
+| `TEXT` | `String` |
+| `TIMESTAMP` | `LocalDateTime` |
 
-| Komponent | Funkcja |
-|-----------|---------|
-| Parser (ANTLR) | Parsuje SQL DDL do drzewa składniowego |
-| Schema Model | Reprezentacja tabel, kolumn, PK i FK |
-| Relationship Analyzer | Wykrywa relacje (`ManyToOne`, `OneToMany`, `OneToOne`, `ManyToMany`) |
-| Code Generator | Generuje kod Java przy użyciu StringTemplate |
+### Wykrywane relacje JPA
 
----
+- `ManyToOne`
+- `OneToMany` (strona odwrotna)
+- `OneToOne` (gdy FK jest jednoczesnie `UNIQUE` lub PK)
+- `ManyToMany` przez tabele lacznikowe
 
-## Mapowanie typów SQL → Java
+## Struktura kodu
 
-| SQL       | Java          |
-|-----------|---------------|
-| INT       | Integer       |
-| BIGINT    | Long          |
-| VARCHAR   | String        |
-| TEXT      | String        |
-| TIMESTAMP | LocalDateTime |
+- `pom.xml` - konfiguracja buildu Maven (Java 17, ANTLR, ST4, testy)
+- `src/main/java/pwr/miasi/Main.java` - punkt startowy CLI
+- `src/main/java/pwr/miasi/antlr4/Sql.g4` - gramatyka SQL
+- `src/main/java/pwr/miasi/parser/SchemaVisitor.java` - budowa modelu schematu
+- `src/main/java/pwr/miasi/parser/SqlTypeMapper.java` - mapowanie typow SQL -> Java
+- `src/main/java/pwr/miasi/model/*` - model schematu bazy
+- `src/main/java/pwr/miasi/analyzer/RelationshipAnalyzer.java` - analiza relacji
+- `src/main/java/pwr/miasi/entity/*` - model encji do generacji kodu
+- `src/main/java/pwr/miasi/generator/EntityGenerator.java` - generator plikow Java
+- `src/main/resources/templates/entity.stg` - szablon StringTemplate
+- `src/test/java/pwr/miasi/*` - testy parsera, analyzera i przeplywu end-to-end
 
----
+## Wymagania
 
-## Przykłady relacji
+- JDK 17+
+- Maven 3.9+
 
-```java
-// ManyToOne
-@ManyToOne
-@JoinColumn(name="user_id")
-User user;
+Weryfikacja srodowiska:
 
-// OneToMany
-@OneToMany(mappedBy="user")
-List<Post> posts;
+```bash
+java -version
+mvn -v
+```
 
-// OneToOne
-@OneToOne
-@JoinColumn(name="user_id")
-User user;
+## Uruchomienie
 
-// ManyToMany
-@ManyToMany
-@JoinTable(...)
-Set<Course> courses;
+### 1) Testy automatyczne
+
+```bash
+mvn clean test
+```
+
+Po poprawnym uruchomieniu pojawia sie `BUILD SUCCESS`.
+Raporty testow sa dostepne w `target/surefire-reports`.
+
+### 2) Uruchomienie CLI bez zapisu plikow
+
+```bash
+mvn -q org.codehaus.mojo:exec-maven-plugin:3.5.0:java "-Dexec.mainClass=pwr.miasi.Main" "-Dexec.args=test.sql output --package=demo.entities --dry-run"
+```
+
+Tryb `--dry-run` pokazuje podsumowanie przetwarzania i nie zapisuje plikow.
+
+### 3) Generowanie encji do katalogu output
+
+```bash
+mvn -q org.codehaus.mojo:exec-maven-plugin:3.5.0:java "-Dexec.mainClass=pwr.miasi.Main" "-Dexec.args=test.sql output --package=demo.entities"
+```
+
+Przykladowy wynik dla `test.sql`:
+- `output/User.java`
+- `output/Post.java`
+- `output/Course.java`
+
+W tym przypadku generowane sa 3 encje, poniewaz tabela `user_course` jest traktowana jako tabela lacznikowa relacji `ManyToMany`.
+
+## Testy
+
+- `SchemaVisitorTest` - walidacja budowy modelu schematu z PK/FK
+- `RelationshipAnalyzerTest` - walidacja wykrywania relacji encji
+- `GeneratorE2ETest` - test end-to-end od SQL do wygenerowanych plikow
+
+## Ograniczenia i dalszy rozwoj
+
+Aktualna wersja nie implementuje pelnego, vendor-specific DDL wszystkich silnikow baz danych.
+Naturalnym kierunkiem rozwoju jest rozszerzenie gramatyki i analyzera o kolejne elementy, np. `ALTER TABLE`, `DEFAULT`, `CHECK`, `INDEX`.
