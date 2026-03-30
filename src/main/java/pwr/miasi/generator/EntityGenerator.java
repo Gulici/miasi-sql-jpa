@@ -1,13 +1,5 @@
 package pwr.miasi.generator;
 
-import org.stringtemplate.v4.ST;
-import org.stringtemplate.v4.STGroup;
-import org.stringtemplate.v4.STGroupFile;
-import pwr.miasi.entity.EntityDefinition;
-import pwr.miasi.entity.EntityModel;
-import pwr.miasi.entity.RelationField;
-import pwr.miasi.entity.ScalarField;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,9 +9,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.stringtemplate.v4.ST;
+import org.stringtemplate.v4.STGroup;
+import org.stringtemplate.v4.STGroupFile;
+
+import pwr.miasi.entity.EntityDefinition;
+import pwr.miasi.entity.EntityModel;
+import pwr.miasi.entity.RelationField;
+import pwr.miasi.entity.ScalarField;
+
 public class EntityGenerator {
     private final STGroup templates;
 
+    /** Loads StringTemplate group used to render entity classes. */
     public EntityGenerator() {
         var resource = EntityGenerator.class.getResource("/templates/entity.stg");
         if (resource == null) {
@@ -28,6 +30,7 @@ public class EntityGenerator {
         this.templates = new STGroupFile(resource, "UTF-8", '<', '>');
     }
 
+    /** Generates one Java file per entity definition. */
     public void generate(EntityModel entityModel, Path outputDir, String basePackage) throws IOException {
         Files.createDirectories(outputDir);
         for (EntityDefinition entity : entityModel.getEntities()) {
@@ -38,6 +41,7 @@ public class EntityGenerator {
     }
 
     private String renderEntity(EntityDefinition entity, String basePackage) {
+        // Split id field from regular scalar fields for cleaner template rendering.
         ST st = templates.getInstanceOf("entity");
         ScalarField idField = entity.getScalarFields().stream()
                 .filter(ScalarField::isId)
@@ -59,6 +63,7 @@ public class EntityGenerator {
     }
 
     private List<String> buildImports(EntityDefinition entity) {
+        // Build only imports needed by field types and relation collections.
         Set<String> imports = new TreeSet<>();
         for (ScalarField field : entity.getScalarFields()) {
             if ("LocalDateTime".equals(field.getType())) {

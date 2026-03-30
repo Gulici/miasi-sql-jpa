@@ -1,10 +1,15 @@
 package pwr.miasi;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
 import pwr.miasi.analyzer.RelationshipAnalyzer;
 import pwr.miasi.antlr4.SqlLexer;
 import pwr.miasi.antlr4.SqlParser;
@@ -13,11 +18,7 @@ import pwr.miasi.generator.EntityGenerator;
 import pwr.miasi.model.SchemaModel;
 import pwr.miasi.parser.SchemaVisitor;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+//Test end-to-end: od SQL do wygenerowanych plików encji
 class GeneratorE2ETest {
     @TempDir
     Path tempDir;

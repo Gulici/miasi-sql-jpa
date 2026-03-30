@@ -17,7 +17,11 @@ import java.util.Set;
 
 public class RelationshipAnalyzer {
 
+    /**
+     * Converts raw schema model into entity model with inferred JPA relations.
+     */
     public EntityModel analyze(SchemaModel schemaModel) {
+        // Join tables are used to build ManyToMany and skipped as standalone entities.
         Set<String> joinTableNames = detectJoinTables(schemaModel);
         EntityModel entityModel = new EntityModel();
 
@@ -53,6 +57,7 @@ public class RelationshipAnalyzer {
                 if (source == null || target == null) {
                     continue;
                 }
+                // FK side is owning side: ManyToOne or OneToOne.
                 boolean oneToOne = isOneToOne(table, fk);
                 String owningFieldName = NamingUtils.toFieldName(target.getClassName());
                 String inverseFieldName = oneToOne
@@ -70,9 +75,11 @@ public class RelationshipAnalyzer {
                         null
                 ));
                 for (String localColumn : fk.getLocalColumnNames()) {
+                    // Replace raw FK column with relation field on entity.
                     source.removeScalarFieldByColumnName(localColumn);
                 }
 
+                // Add inverse side: OneToMany or OneToOne(mappedBy=...).
                 target.addRelationField(new RelationField(
                         oneToOne ? RelationType.ONE_TO_ONE : RelationType.ONE_TO_MANY,
                         inverseFieldName,
@@ -102,6 +109,7 @@ public class RelationshipAnalyzer {
             String leftFieldName = NamingUtils.pluralize(NamingUtils.toFieldName(right.getClassName()));
             String rightFieldName = NamingUtils.pluralize(NamingUtils.toFieldName(left.getClassName()));
 
+            // For detected join tables create bidirectional ManyToMany relation.
             left.addRelationField(new RelationField(
                     RelationType.MANY_TO_MANY,
                     leftFieldName,
@@ -129,6 +137,7 @@ public class RelationshipAnalyzer {
     }
 
     private Set<String> detectJoinTables(SchemaModel schemaModel) {
+        // Heuristic: exactly 2 foreign keys and no extra business columns.
         Set<String> joinTables = new HashSet<>();
         for (Table table : schemaModel.getTables()) {
             if (table.getForeignKeys().size() != 2) {
@@ -148,6 +157,7 @@ public class RelationshipAnalyzer {
     }
 
     private boolean isOneToOne(Table table, ForeignKey fk) {
+        // OneToOne if FK column is unique or is the table primary key.
         if (fk.getLocalColumnNames().size() != 1) {
             return false;
         }

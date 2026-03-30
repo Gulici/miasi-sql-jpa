@@ -3,17 +3,18 @@ package pwr.miasi;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
+
 import pwr.miasi.antlr4.SqlLexer;
 import pwr.miasi.antlr4.SqlParser;
 import pwr.miasi.model.SchemaModel;
 import pwr.miasi.model.Table;
 import pwr.miasi.parser.SchemaVisitor;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+// czy parser + visitor dobrze robi model (PK/FK)
 class SchemaVisitorTest {
     @Test
     void shouldBuildSchemaModelWithPkAndFk() {

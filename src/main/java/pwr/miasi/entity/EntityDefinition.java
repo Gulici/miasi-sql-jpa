@@ -36,6 +36,7 @@ public class EntityDefinition {
         scalarFields.add(field);
     }
 
+    /** Adds relation if an equivalent one does not already exist. */
     public void addRelationField(RelationField relationField) {
         boolean exists = relationFields.stream().anyMatch(existing ->
                 existing.getFieldName().equalsIgnoreCase(relationField.getFieldName())
@@ -47,6 +48,7 @@ public class EntityDefinition {
         }
     }
 
+    /** Removes raw FK columns that are represented as relation fields. */
     public void removeScalarFieldByColumnName(String columnName) {
         for (Iterator<ScalarField> iterator = scalarFields.iterator(); iterator.hasNext(); ) {
             ScalarField field = iterator.next();

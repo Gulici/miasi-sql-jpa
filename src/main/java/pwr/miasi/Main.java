@@ -1,11 +1,15 @@
 package pwr.miasi;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.tree.ParseTree;
+
 import pwr.miasi.analyzer.RelationshipAnalyzer;
 import pwr.miasi.antlr4.SqlLexer;
 import pwr.miasi.antlr4.SqlParser;
@@ -14,10 +18,10 @@ import pwr.miasi.generator.EntityGenerator;
 import pwr.miasi.model.SchemaModel;
 import pwr.miasi.parser.SchemaVisitor;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-
 public class Main {
+    /**
+      CLI entry point. Expected args: input.sql outputDir [--package=...] [--dry-run]
+     */
     public static void main(String[] args) throws Exception {
         if (args.length < 2) {
             printUsage();
@@ -51,6 +55,7 @@ public class Main {
             return;
         }
 
+        // 1) Parse SQL input into an in-memory schema model.
         String sql = Files.readString(Path.of(inputPath));
         SqlLexer lexer = new SqlLexer(CharStreams.fromString(sql));
         SqlParser parser = new SqlParser(new CommonTokenStream(lexer));
@@ -62,6 +67,7 @@ public class Main {
         visitor.visit(tree);
         SchemaModel schemaModel = visitor.getSchemaModel();
 
+        // 2) Convert schema model into entity model with JPA relations.
         RelationshipAnalyzer analyzer = new RelationshipAnalyzer();
         EntityModel entityModel = analyzer.analyze(schemaModel);
 
@@ -73,16 +79,19 @@ public class Main {
             return;
         }
 
+        // 3) Generate Java files from templates.
         EntityGenerator generator = new EntityGenerator();
         Path outputDirectory = Path.of(outputPath);
         generator.generate(entityModel, outputDirectory, basePackage);
         System.out.println("Entities generated in: " + outputDirectory.toAbsolutePath());
     }
 
+    /* Prints CLI usage for invalid/missing arguments. */
     private static void printUsage() {
         System.out.println("Usage: java -jar app.jar <input.sql> <outputDir> [--package=your.package] [--dry-run]");
     }
 
+    /* Converts parser syntax errors into clear runtime exceptions. */
     private static final class ThrowingErrorListener extends BaseErrorListener {
         @Override
         public void syntaxError(

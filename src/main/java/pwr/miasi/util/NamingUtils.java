@@ -4,6 +4,7 @@ public final class NamingUtils {
     private NamingUtils() {
     }
 
+    /** Converts table-like names (e.g. user_accounts) to class names (UserAccount). */
     public static String toClassName(String name) {
         StringBuilder sb = new StringBuilder();
         for (String token : name.split("_")) {
@@ -19,6 +20,7 @@ public final class NamingUtils {
         return sb.toString();
     }
 
+    /** Converts names to camelCase field names. */
     public static String toFieldName(String name) {
         String className = toClassName(name);
         if (className.isEmpty()) {
@@ -27,6 +29,7 @@ public final class NamingUtils {
         return Character.toLowerCase(className.charAt(0)) + className.substring(1);
     }
 
+    /** Naive pluralization used for collection relation field names. */
     public static String pluralize(String base) {
         if (base.endsWith("s")) {
             return base + "es";
@@ -34,6 +37,7 @@ public final class NamingUtils {
         return base + "s";
     }
 
+    /** Simple singularization to keep class names in singular form. */
     private static String singularize(String token) {
         if (token.endsWith("ies") && token.length() > 3) {
             return token.substring(0, token.length() - 3) + "y";

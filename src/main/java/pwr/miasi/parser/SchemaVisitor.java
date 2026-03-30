@@ -17,12 +17,14 @@ import java.util.Set;
 public class SchemaVisitor extends SqlBaseVisitor<Void> {
     private final SchemaModel schemaModel = new SchemaModel();
 
+    /** Returns the schema built from parsed SQL statements. */
     public SchemaModel getSchemaModel() {
         return schemaModel;
     }
 
     @Override
     public Void visitSchema(SqlParser.SchemaContext ctx) {
+        // Visit all CREATE TABLE statements first, then validate FK targets globally.
         Void result = super.visitSchema(ctx);
         validateForeignKeyTargets();
         return result;
@@ -30,6 +32,7 @@ public class SchemaVisitor extends SqlBaseVisitor<Void> {
 
     @Override
     public Void visitCreateTable(SqlParser.CreateTableContext ctx) {
+        // Build one table definition from a single CREATE TABLE statement.
         String tableName = ctx.tableName().getText();
         Table table = new Table(tableName);
 
@@ -43,6 +46,7 @@ public class SchemaVisitor extends SqlBaseVisitor<Void> {
                 String javaType = SqlTypeMapper.toJavaType(sqlType);
                 Column column = new Column(colName, sqlType, javaType);
 
+                // Store VARCHAR length, e.g. VARCHAR(100) -> length = 100.
                 if (colCtx.dataType().VARCHAR() != null) {
                     column.setLength(Integer.parseInt(colCtx.dataType().NUMBER().getText()));
                 }
@@ -78,6 +82,7 @@ public class SchemaVisitor extends SqlBaseVisitor<Void> {
                         : null;
 
                 if (constraintCtx.PRIMARY() != null) {
+                    // Table-level PK: PRIMARY KEY(col1, col2, ...)
                     List<String> pkColumns = parseColumnNameList(constraintCtx.columnNameList());
                     for (String pkColumnName : pkColumns) {
                         Column column = table.getColumnByName(pkColumnName);
@@ -88,6 +93,7 @@ public class SchemaVisitor extends SqlBaseVisitor<Void> {
                     }
                     table.setPrimaryKey(new PrimaryKey(pkColumns));
                 } else if (constraintCtx.FOREIGN() != null) {
+                    // Table-level FK: FOREIGN KEY(...) REFERENCES ...
                     List<String> localColumns = parseColumnNameList(constraintCtx.columnNameList());
                     SqlParser.ReferencesClauseContext referencesCtx = constraintCtx.referencesClause();
                     ForeignKey fk = new ForeignKey(
@@ -98,6 +104,7 @@ public class SchemaVisitor extends SqlBaseVisitor<Void> {
                     );
                     table.addForeignKey(fk);
                 } else if (constraintCtx.UNIQUE() != null) {
+                    // Table-level UNIQUE over one or more columns.
                     List<String> uniqueColumns = parseColumnNameList(constraintCtx.columnNameList());
                     for (String uniqueColumnName : uniqueColumns) {
                         Column column = table.getColumnByName(uniqueColumnName);
@@ -122,6 +129,7 @@ public class SchemaVisitor extends SqlBaseVisitor<Void> {
     }
 
     private List<String> parseColumnNameList(SqlParser.ColumnNameListContext ctx) {
+        // Helper: parser context -> plain list of column names.
         List<String> columns = new ArrayList<>();
         for (SqlParser.ColumnNameContext colCtx : ctx.columnName()) {
             columns.add(colCtx.getText());
@@ -130,6 +138,7 @@ public class SchemaVisitor extends SqlBaseVisitor<Void> {
     }
 
     private void validateTable(Table table) {
+        // Ensure FK local columns exist inside current table.
         for (ForeignKey fk : table.getForeignKeys()) {
             for (String localColumn : fk.getLocalColumnNames()) {
                 if (table.getColumnByName(localColumn) == null) {
@@ -142,6 +151,7 @@ public class SchemaVisitor extends SqlBaseVisitor<Void> {
     }
 
     private void validateForeignKeyTargets() {
+        // Ensure FK target table and target columns exist in schema.
         for (Table table : schemaModel.getTables()) {
             for (ForeignKey fk : table.getForeignKeys()) {
                 Table referencedTable = schemaModel.getTableByName(fk.getReferencedTable());
